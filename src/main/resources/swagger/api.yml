@@ -1,0 +1,656 @@
+openapi: 3.0.3
+info:
+  title: Wallet API
+  description: The user's wallet API
+  version: 1.0.0
+tags:
+  - name: Wallet
+    description: Wallet API
+servers:
+  - url: /api/v1
+paths:
+  '/user/{userId}/wallet':
+    get:
+      tags: [Wallet]
+      operationId: searchWallets
+      summary: Wallets searching
+      description: It returns a page of WalletDTO which matches the query parameters
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: query
+          name: surname
+          schema:
+            type: string
+          required: false
+          description: Wallet's surname
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          required: false
+          description: Current page
+        - name: size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 10
+          required: false
+          description: Items count per page
+        - name: sort
+          in: query
+          schema:
+            $ref: '#/components/schemas/WalletFields'
+          required: false
+          description: Sorting field in which you can use all the WalletDTO's properties
+        - name: direction
+          in: query
+          schema:
+            $ref: '#/components/schemas/Direction'
+          required: false
+          description: Sort direction ASC | DESC
+      responses:
+        '200':
+          $ref: '#/components/responses/SearchWalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+    post:
+      tags: [Wallet]
+      operationId: createWallet
+      summary: Wallet creation
+      description: It creates a new wallet registry
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletCreationDTO'
+      responses:
+        '201':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '409':
+          $ref: '#/components/responses/WalletConflictResponse'
+  '/user/{userId}/wallet/default':
+    get:
+      tags: [Wallet]
+      operationId: retrieveDefaultWallet
+      summary: Wallet retrieving
+      description: It returns the default WalletDTO of a certain User
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}':
+    get:
+      tags: [Wallet]
+      operationId: retrieveWallet
+      summary: Wallet retrieving
+      description: It returns a WalletDTO according to its UUID
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+    patch:
+      tags: [Wallet]
+      operationId: partiallyUpdateWallet
+      summary: Wallet partial updating
+      description: It partially updates an existing wallet according to its UUID (it disregards the nulls)
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletPartialUpdateDTO'
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+    put:
+      tags: [Wallet]
+      operationId: updateWallet
+      summary: Wallet updating
+      description: It updates an existing wallet according to its UUID
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletUpdateDTO'
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+    delete:
+      tags: [Wallet]
+      operationId: deleteWallet
+      summary: Wallet deletion
+      description: It does a logic deletion of the wallet according to its UUID
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '400':
+          $ref: '#/components/responses/WalletBadRequestResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/default':
+    put:
+      tags: [Wallet]
+      operationId: setDefaultWallet
+      summary: Set the default wallet
+      description: It sets the given walletId as the default User's wallet
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/active':
+    put:
+      tags: [Wallet]
+      operationId: toggleActive
+      summary: Wallet activation toggler
+      description: It swaps the WalletDTO's isActive flag
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/accept-bank-transfer':
+    put:
+      tags: [Wallet]
+      operationId: toggleAcceptBankTransfer
+      summary: Accept bank transfer setting toggler
+      description: It swaps the WalletDTO's acceptBankTransfer flag
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/accept-payments':
+    put:
+      tags: [Wallet]
+      operationId: toggleAcceptPayments
+      summary: Accept payments setting toggler
+      description: It swaps the WalletDTO's acceptPayments flag
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/accept-widthdrawing':
+    put:
+      tags: [Wallet]
+      operationId: toggleAcceptWithdrawing
+      summary: Accept withdrawing setting toggler
+      description: It swaps the WalletDTO's acceptWithdrawing flag
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+  '/user/{userId}/wallet/{walletId}/accept-deposit':
+    put:
+      tags: [Wallet]
+      operationId: toggleAcceptDeposit
+      summary: Accept deposit setting toggler
+      description: It swaps the WalletDTO's acceptDeposit flag
+      parameters:
+        - in: path
+          name: userId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: User's UUID
+        - in: path
+          name: walletId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Wallet's UUID
+      responses:
+        '200':
+          $ref: '#/components/responses/WalletOkResponse'
+        '404':
+          $ref: '#/components/responses/WalletNotFoundResponse'
+components:
+  responses:
+    SearchWalletOkResponse:
+      description: Processed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PageWalletDTO'
+    WalletOkResponse:
+      description: Processed request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/WalletDTO'
+    WalletNotFoundResponse:
+      description: Wallet not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    WalletBadRequestResponse:
+      description: An error occured while processing the request body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    WalletConflictResponse:
+      description: A data conflict occurred (it might be a ConstraintViolationException)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    PageWalletDTO:
+      title: Page«Wallet»
+      type: object
+      description: A page of WalletDTO
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalletDTO'
+        total:
+          type: integer
+          format: int64
+        pageCount:
+          type: integer
+          format: int32
+        sortedBy:
+          type: string
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+      required:
+        - content
+        - total
+        - pageCount
+        - sortedBy
+        - pageable
+    WalletDTO:
+      type: object
+      description: The user's wallet
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "7435806f-4022-41d0-9c62-c9fc74d97d16"
+        userId:
+          type: string
+          format: uuid
+          example: "7435806f-4022-41d0-9c62-c9fc74d97d16"
+        surname:
+          type: string
+          minLength: 3
+          maxLength: 60
+          example: "vacations"
+        isActive:
+          type: boolean
+          example: true
+        isDefault:
+          type: boolean
+          example: false
+        minBalance:
+          type: number
+          minimum: 0
+          format: double
+          example: 0.00
+        acceptBankTransfer:
+          type: boolean
+          example: true
+        acceptPayments:
+          type: boolean
+          example: true
+        acceptWithdrawing:
+          type: boolean
+          example: true
+        acceptDeposit:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2001-01-01T00:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2001-01-01T00:00:00.000Z"
+      required:
+        - id
+        - userId
+        - surname
+        - isActive
+        - isDefault
+        - minBalance
+        - acceptBankTransfer
+        - acceptPayments
+        - acceptWithdrawing
+        - acceptDeposit
+        - createdAt
+    WalletCreationDTO:
+      type: object
+      description: The user's wallet
+      properties:
+        surname:
+          type: string
+          minLength: 3
+          maxLength: 60
+          example: "vacations"
+        isActive:
+          type: boolean
+          example: true
+        minBalance:
+          type: number
+          minimum: 0
+          format: double
+          example: 0.00
+      required:
+        - surname
+    WalletPartialUpdateDTO:
+      type: object
+      description: The user's wallet
+      properties:
+        surname:
+          type: string
+          minLength: 3
+          maxLength: 60
+          example: "vacations"
+        minBalance:
+          type: number
+          minimum: 0
+          format: double
+          example: 0.00
+        isActive:
+          type: boolean
+          example: true
+        acceptBankTransfer:
+          type: boolean
+          example: true
+        acceptPayments:
+          type: boolean
+          example: true
+        acceptWithdrawing:
+          type: boolean
+          example: true
+        acceptDeposit:
+          type: boolean
+          example: true
+    WalletUpdateDTO:
+      type: object
+      description: The user's wallet
+      properties:
+        surname:
+          type: string
+          minLength: 3
+          maxLength: 60
+          example: "vacations"
+        minBalance:
+          type: number
+          minimum: 0
+          format: double
+          example: 0.00
+        isActive:
+          type: boolean
+          example: true
+        acceptBankTransfer:
+          type: boolean
+          example: true
+        acceptPayments:
+          type: boolean
+          example: true
+        acceptWithdrawing:
+          type: boolean
+          example: true
+        acceptDeposit:
+          type: boolean
+          example: true
+      required:
+        - surname
+        - minBalance
+        - isActive
+        - acceptBankTransfer
+        - acceptPayments
+        - acceptWithdrawing
+        - acceptDeposit
+    WalletFields:
+      type: string
+      default: surname
+      enum:
+        - id
+        - userId
+        - surname
+        - isActive
+        - isDefault
+        - minBalance
+        - acceptBankTransfer
+        - acceptPayments
+        - acceptWithdrawing
+        - acceptDeposit
+        - createdAt
+        - updatedAt
+    Sort:
+      type: object
+      properties:
+        empty:
+          type: boolean
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+      title: Sort
+    Direction:
+      type: string
+      default: "asc"
+      enum:
+        - asc
+        - desc
+    Pageable:
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        pageNumber:
+          type: integer
+          format: int64
+        pageSize:
+          type: integer
+          format: int32
+        paged:
+          type: boolean
+        unpaged:
+          type: boolean
+      title: Pageable
+    ApiError:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ApiErrorType'
+        message:
+          type: string
+          description: Error message
+    ApiErrorType:
+      type: string
+      enum:
+        - user_not_found
+        - wallet_not_found
+        - duplicated_wallet_surname
+        - null_payload
+        - forbidden_default_wallet_deletion
+        - unexpected_error
