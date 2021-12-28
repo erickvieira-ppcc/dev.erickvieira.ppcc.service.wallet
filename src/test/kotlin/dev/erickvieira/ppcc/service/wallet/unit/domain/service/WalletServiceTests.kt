@@ -5,7 +5,7 @@ import dev.erickvieira.ppcc.service.wallet.domain.entity.Wallet
 import dev.erickvieira.ppcc.service.wallet.domain.exception.*
 import dev.erickvieira.ppcc.service.wallet.domain.extension.*
 import dev.erickvieira.ppcc.service.wallet.domain.model.WalletToggle.*
-import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.WalletRabbitDispatcherPort
+import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.dispatcher.WalletRabbitDispatcherPort
 import dev.erickvieira.ppcc.service.wallet.domain.repository.WalletRepository
 import dev.erickvieira.ppcc.service.wallet.domain.service.WalletService
 import dev.erickvieira.ppcc.service.wallet.web.api.model.Direction

@@ -1,9 +1,9 @@
-package dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.impl
+package dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.dispatcher.impl
 
 import com.google.gson.Gson
 import dev.erickvieira.ppcc.service.wallet.adapter.rabbitmq.RabbitDispatcherAdapter
 import dev.erickvieira.ppcc.service.wallet.domain.entity.Wallet
-import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.WalletRabbitDispatcherPort
+import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.dispatcher.WalletRabbitDispatcherPort
 import org.springframework.stereotype.Component
 
 @Component

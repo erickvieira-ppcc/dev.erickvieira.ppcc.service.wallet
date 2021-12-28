@@ -1,9 +1,9 @@
-package dev.erickvieira.ppcc.service.wallet.domain.service
+package dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.listener
 
 import com.rabbitmq.client.Channel
 import dev.erickvieira.ppcc.service.wallet.domain.entity.Wallet
 import dev.erickvieira.ppcc.service.wallet.domain.extension.defaultWallet
-import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.WalletRabbitDispatcherPort
+import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.dispatcher.WalletRabbitDispatcherPort
 import dev.erickvieira.ppcc.service.wallet.domain.repository.WalletRepository
 import dev.erickvieira.ppcc.service.wallet.extension.custom
 import org.slf4j.Logger
@@ -17,12 +17,12 @@ import org.springframework.stereotype.Component
 import java.util.*
 
 @Component
-class UserRabbitListenerService(
+class UserRabbitListenerPort(
     private val walletRepository: WalletRepository,
     private val walletDispatcher: WalletRabbitDispatcherPort,
 ) {
 
-    private val logger: Logger = LoggerFactory.getLogger(UserRabbitListenerService::class.java)
+    private val logger: Logger = LoggerFactory.getLogger(UserRabbitListenerPort::class.java)
 
     @RabbitListener(
         bindings = [QueueBinding(
