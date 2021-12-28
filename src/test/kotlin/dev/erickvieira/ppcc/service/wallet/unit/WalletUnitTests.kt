@@ -106,6 +106,7 @@ open class WalletUnitTests {
         surname = surname.lowercase().trim(),
         isActive = isActive ?: false,
         minBalance = minBalance?.toBigDecimal() ?: BigDecimal.ZERO,
+        createdAt = defaultCreatedAt
     )
 
     protected fun generateWalletPage(

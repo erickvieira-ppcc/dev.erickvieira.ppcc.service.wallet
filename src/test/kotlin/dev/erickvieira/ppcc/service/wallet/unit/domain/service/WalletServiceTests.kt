@@ -5,6 +5,7 @@ import dev.erickvieira.ppcc.service.wallet.domain.entity.Wallet
 import dev.erickvieira.ppcc.service.wallet.domain.exception.*
 import dev.erickvieira.ppcc.service.wallet.domain.extension.*
 import dev.erickvieira.ppcc.service.wallet.domain.model.WalletToggle.*
+import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.WalletRabbitDispatcherPort
 import dev.erickvieira.ppcc.service.wallet.domain.repository.WalletRepository
 import dev.erickvieira.ppcc.service.wallet.domain.service.WalletService
 import dev.erickvieira.ppcc.service.wallet.web.api.model.Direction
@@ -26,7 +27,11 @@ import java.util.*
 class WalletServiceTests : WalletUnitTests() {
 
     private val walletRepositoryMock: WalletRepository = mockk()
-    private val walletServiceMock = WalletService(walletRepository = walletRepositoryMock)
+    private val walletDispatcherMock: WalletRabbitDispatcherPort = mockk()
+    private val walletServiceMock = WalletService(
+        walletRepository = walletRepositoryMock,
+        walletDispatcher = walletDispatcherMock
+    )
 
     @Before
     fun setUp() = MockKAnnotations.init(this)
@@ -100,19 +105,23 @@ class WalletServiceTests : WalletUnitTests() {
         } returns null
         every {
             walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(userId = any())
-        } returns mockk()
+        } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns walletMock
 
-        walletServiceMock.createWallet(
-            userId = userIdMock,
-            walletCreationDTO = walletCreationDTOMock
-        ).let { responseEntity ->
-            assertEquals(HttpStatus.CREATED.value(), responseEntity.statusCodeValue)
-            responseEntity.body?.assertWalletCreation(input = walletCreationDTOMock)
+        assertThrows<Exception> {
+            walletServiceMock.createWallet(
+                userId = userIdMock,
+                walletCreationDTO = walletCreationDTOMock
+            ).let { responseEntity ->
+                assertEquals(HttpStatus.CREATED.value(), responseEntity.statusCodeValue)
+                responseEntity.body?.assertWalletCreation(input = walletCreationDTOMock)
+            }
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
@@ -128,6 +137,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(userId = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<DuplicatedWalletSurnameException> {
@@ -139,6 +149,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -150,6 +161,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(userId = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<NullPayloadException> {
@@ -161,6 +173,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -174,6 +187,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(userId = any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<UserNotFoundException> {
@@ -185,6 +199,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndDeletedAtIsNull(any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -270,6 +285,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.updateWallet(
@@ -293,6 +309,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
@@ -304,6 +321,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<WalletNotFoundException> {
@@ -316,6 +334,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -331,6 +350,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns duplicatedWalletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<DuplicatedWalletSurnameException> {
@@ -343,6 +363,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -354,6 +375,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<NullPayloadException> {
@@ -366,6 +388,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -383,6 +406,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.partiallyUpdateWallet(
@@ -401,6 +425,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
@@ -412,6 +437,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<WalletNotFoundException> {
@@ -424,6 +450,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -439,6 +466,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns duplicatedWalletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<DuplicatedWalletSurnameException> {
@@ -451,6 +479,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -462,6 +491,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(userId = any(), surname = any())
         } returns mockk()
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<NullPayloadException> {
@@ -474,6 +504,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndSurnameAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -485,6 +516,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns deletedWalletMock
 
         walletServiceMock.deleteWallet(
@@ -499,6 +531,7 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
@@ -509,6 +542,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<WalletNotFoundException> {
@@ -516,6 +550,7 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -526,6 +561,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<DefaultWalletDeletionException> {
@@ -533,6 +569,7 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
@@ -548,6 +585,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.saveAll(any<List<Wallet>>()) } returnsArgument 0
 
         walletServiceMock.setDefaultWallet(
@@ -565,6 +603,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.saveAll(any<List<Wallet>>()) }
     }
 
@@ -581,6 +620,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any())
         } returns currentDefaultWalletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.saveAll(any<List<Wallet>>()) } returnsArgument 0
 
         walletServiceMock.setDefaultWallet(
@@ -597,6 +637,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any()) }
+        verify(exactly = 2) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 1) { walletRepositoryMock.saveAll(any<List<Wallet>>()) }
     }
 
@@ -610,6 +651,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any())
         } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.saveAll(any<List<Wallet>>()) } returnsArgument 0
 
         assertThrows<WalletNotFoundException> {
@@ -618,6 +660,7 @@ class WalletServiceTests : WalletUnitTests() {
 
         verify(exactly = 0) { walletRepositoryMock.findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(any()) }
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
         verify(exactly = 0) { walletRepositoryMock.saveAll(any<List<Wallet>>()) }
     }
 
@@ -630,6 +673,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.toggleActive(
@@ -645,6 +689,8 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -656,8 +702,12 @@ class WalletServiceTests : WalletUnitTests() {
         assertThrows<WalletNotFoundException> {
             walletServiceMock.toggleActive(userId = walletMock.userId!!, walletId = walletMock.id!!)
         }
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
+        every { walletRepositoryMock.save(any()) } returns mockk()
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -669,6 +719,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.toggleAcceptBankTransfer(
@@ -684,6 +735,8 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -695,8 +748,12 @@ class WalletServiceTests : WalletUnitTests() {
         assertThrows<WalletNotFoundException> {
             walletServiceMock.toggleAcceptBankTransfer(userId = walletMock.userId!!, walletId = walletMock.id!!)
         }
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
+        every { walletRepositoryMock.save(any()) } returns mockk()
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -708,6 +765,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.toggleAcceptPayments(
@@ -723,6 +781,8 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -734,8 +794,12 @@ class WalletServiceTests : WalletUnitTests() {
         assertThrows<WalletNotFoundException> {
             walletServiceMock.toggleAcceptPayments(userId = walletMock.userId!!, walletId = walletMock.id!!)
         }
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
+        every { walletRepositoryMock.save(any()) } returns mockk()
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -747,6 +811,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.toggleAcceptWithdrawing(
@@ -762,6 +827,8 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -769,12 +836,16 @@ class WalletServiceTests : WalletUnitTests() {
         val walletMock = Wallet.randomize()
 
         every { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any()) } returns null
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
+        every { walletRepositoryMock.save(any()) } returns mockk()
 
         assertThrows<WalletNotFoundException> {
             walletServiceMock.toggleAcceptPayments(userId = walletMock.userId!!, walletId = walletMock.id!!)
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -786,6 +857,7 @@ class WalletServiceTests : WalletUnitTests() {
         every {
             walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = any(), id = any())
         } returns walletMock
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
         every { walletRepositoryMock.save(any()) } returns updatedWalletMock
 
         walletServiceMock.toggleAcceptDeposit(
@@ -801,6 +873,8 @@ class WalletServiceTests : WalletUnitTests() {
         }
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 1) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 1) { walletRepositoryMock.save(any()) }
     }
 
     @Test
@@ -812,8 +886,12 @@ class WalletServiceTests : WalletUnitTests() {
         assertThrows<WalletNotFoundException> {
             walletServiceMock.toggleAcceptPayments(userId = walletMock.userId!!, walletId = walletMock.id!!)
         }
+        every { walletDispatcherMock.dispatch(any()) } returns Unit
+        every { walletRepositoryMock.save(any()) } returns mockk()
 
         verify(exactly = 1) { walletRepositoryMock.findFirstByUserIdAndIdAndDeletedAtIsNull(any(), any()) }
+        verify(exactly = 0) { walletDispatcherMock.dispatch(any()) }
+        verify(exactly = 0) { walletRepositoryMock.save(any()) }
     }
 
     private fun WalletService.searchWalletsWithDefaults(

@@ -1,9 +1,11 @@
 package dev.erickvieira.ppcc.service.wallet
 
+import dev.erickvieira.ppcc.service.wallet.config.PpccProperties
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient
 import org.springframework.context.annotation.ComponentScan
 import java.net.InetAddress
@@ -12,6 +14,7 @@ import java.net.UnknownHostException
 @SpringBootApplication
 @EnableEurekaClient
 @ComponentScan(basePackages = ["dev.erickvieira.ppcc", "dev.erickvieira.ppcc.service.wallet"])
+@EnableConfigurationProperties(PpccProperties::class)
 open class WalletServiceApplication
 
 val logger: Logger = LoggerFactory.getLogger(WalletServiceApplication::class.java)

@@ -34,6 +34,13 @@ fun Wallet.Companion.fromWalletCreationDTO(userId: UUID, input: WalletCreationDT
     createdAt = OffsetDateTime.now()
 )
 
+fun Wallet.Companion.defaultWallet(userId: UUID) = Wallet(
+    userId = userId,
+    surname = "default",
+    isDefault = true,
+    createdAt = OffsetDateTime.now()
+)
+
 fun Wallet.withUpdatedValues(values: WalletPartialUpdateDTO) = Wallet(
     id = id,
     userId = userId,

@@ -6,6 +6,7 @@ plugins {
     id("org.openapi.generator")
     id("info.solidsoft.pitest")
     kotlin("jvm") version "1.6.0"
+    kotlin("kapt") version "1.6.0"
     kotlin("plugin.spring") version "1.6.0"
 }
 
@@ -61,6 +62,7 @@ dependencies {
     implementation("org.hibernate:hibernate-validator:$hibernateValidatorVersion")
     implementation("org.openapitools:jackson-databind-nullable:$nullableVersion")
     implementation("org.springframework.boot:spring-boot-starter-actuator:$springBootVersion")
+    implementation("org.springframework.boot:spring-boot-starter-amqp:$springBootVersion")
     implementation("org.springframework.boot:spring-boot-starter-data-jdbc:$springBootVersion")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa:$springBootVersion")
     implementation("org.springframework.boot:spring-boot-starter-jdbc:$springBootVersion")
@@ -78,7 +80,7 @@ dependencies {
     runtimeOnly("org.flywaydb:flyway-core:$flywaydbVersion")
     runtimeOnly("org.postgresql:postgresql:$postgreSQLVersion")
 
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor:$springBootVersion")
+    kapt("org.springframework.boot:spring-boot-configuration-processor:$springBootVersion")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test:$springBootVersion")
     testImplementation("com.ninja-squad:springmockk:$springMockkVersion")

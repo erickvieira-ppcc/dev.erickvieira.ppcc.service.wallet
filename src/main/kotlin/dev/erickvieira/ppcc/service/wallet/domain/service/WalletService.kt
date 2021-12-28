@@ -4,6 +4,7 @@ import dev.erickvieira.ppcc.service.wallet.domain.entity.Wallet
 import dev.erickvieira.ppcc.service.wallet.domain.exception.*
 import dev.erickvieira.ppcc.service.wallet.domain.extension.*
 import dev.erickvieira.ppcc.service.wallet.domain.model.WalletToggle.*
+import dev.erickvieira.ppcc.service.wallet.domain.port.rabbitmq.WalletRabbitDispatcherPort
 import dev.erickvieira.ppcc.service.wallet.domain.repository.WalletRepository
 import dev.erickvieira.ppcc.service.wallet.extension.*
 import dev.erickvieira.ppcc.service.wallet.web.api.WalletApiDelegate
@@ -19,7 +20,8 @@ import java.util.*
 @Service
 @Api(value = "Wallet", description = "the Wallet API", tags = ["Wallet"])
 class WalletService(
-    private val walletRepository: WalletRepository
+    private val walletRepository: WalletRepository,
+    private val walletDispatcher: WalletRabbitDispatcherPort
 ) : WalletApiDelegate {
 
     private val logger: Logger = LoggerFactory.getLogger(WalletService::class.java)
@@ -83,7 +85,7 @@ class WalletService(
                 userId = userId,
                 input = payload
             ).ensureSurnameUniquenessForTheGivenUser { wallet ->
-                walletRepository.save(wallet).let { savedWallet ->
+                saveAndDispatch(wallet).let { savedWallet ->
                     ResponseEntity.created(
                         ServletUriComponentsBuilder
                             .fromCurrentRequestUri()
@@ -144,8 +146,7 @@ class WalletService(
                 userId = userId,
                 id = walletId
             )?.ensureSurnameUniquenessForTheGivenUser { wallet ->
-                walletRepository
-                    .save(wallet.withUpdatedValues(values = payload))
+                saveAndDispatch(wallet.withUpdatedValues(values = payload))
                     .let { ResponseEntity.ok(it.toWalletDTO()) }
             } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
         }
@@ -170,8 +171,7 @@ class WalletService(
                 userId = userId,
                 id = walletId
             )?.ensureSurnameUniquenessForTheGivenUser { wallet ->
-                walletRepository
-                    .save(wallet.withUpdatedValues(values = payload))
+                saveAndDispatch(wallet.withUpdatedValues(values = payload))
                     .let { ResponseEntity.ok(it.toWalletDTO()) }
             } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
         }
@@ -187,7 +187,7 @@ class WalletService(
         logger.custom.info(method, "userId" to userId, "walletId" to walletId)
         walletRepository.findFirstByUserIdAndIdAndDeletedAtIsNull(userId = userId, id = walletId)?.let { wallet ->
             wallet.ifIsDefault { throw DefaultWalletDeletionException(id = walletId, surname = wallet.surname) }
-            walletRepository.save(wallet.asDeleted())
+            saveAndDispatch(wallet.asDeleted())
             ResponseEntity.ok(wallet.toWalletDTO())
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
@@ -211,9 +211,12 @@ class WalletService(
                 .findFirstByUserIdAndIsDefaultIsTrueAndDeletedAtIsNull(userId = userId)
                 ?.toggle(IS_DEFAULT)?.let { oldDefault -> updatedWallets.add(oldDefault) }
 
-            walletRepository.saveAll(updatedWallets)
-                .takeIf { it.isNotEmpty() }
-                ?.run { ResponseEntity.ok(newDefault.toWalletDTO()) }
+            walletRepository.saveAll(updatedWallets).takeIf {
+                it.isNotEmpty()
+            }?.run {
+                forEach { walletDispatcher.dispatch(wallet = it) }
+                ResponseEntity.ok(newDefault.toWalletDTO())
+            }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
 
@@ -232,7 +235,7 @@ class WalletService(
             userId = userId,
             id = walletId
         )?.let { wallet ->
-            walletRepository.save(wallet.toggle(IS_ACTIVE))
+            saveAndDispatch(wallet.toggle(IS_ACTIVE))
                 .let { ResponseEntity.ok(it.toWalletDTO()) }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
@@ -252,7 +255,7 @@ class WalletService(
             userId = userId,
             id = walletId
         )?.let { wallet ->
-            walletRepository.save(wallet.toggle(ACCEPT_BANK_TRANSFER))
+            saveAndDispatch(wallet.toggle(ACCEPT_BANK_TRANSFER))
                 .let { ResponseEntity.ok(it.toWalletDTO()) }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
@@ -272,7 +275,7 @@ class WalletService(
             userId = userId,
             id = walletId
         )?.let { wallet ->
-            walletRepository.save(wallet.toggle(ACCEPT_PAYMENTS))
+            saveAndDispatch(wallet.toggle(ACCEPT_PAYMENTS))
                 .let { ResponseEntity.ok(it.toWalletDTO()) }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
@@ -292,7 +295,7 @@ class WalletService(
             userId = userId,
             id = walletId
         )?.let { wallet ->
-            walletRepository.save(wallet.toggle(ACCEPT_WITHDRAWING))
+            saveAndDispatch(wallet.toggle(ACCEPT_WITHDRAWING))
                 .let { ResponseEntity.ok(it.toWalletDTO()) }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
     }
@@ -312,9 +315,13 @@ class WalletService(
             userId = userId,
             id = walletId
         )?.let { wallet ->
-            walletRepository.save(wallet.toggle(ACCEPT_DEPOSIT))
+            saveAndDispatch(wallet.toggle(ACCEPT_DEPOSIT))
                 .let { ResponseEntity.ok(it.toWalletDTO()) }
         } ?: throw WalletNotFoundException("userId" to userId, "id" to walletId)
+    }
+
+    fun saveAndDispatch(wallet: Wallet) = wallet.apply {
+        walletRepository.save(this).let { updatedWallet -> walletDispatcher.dispatch(wallet = updatedWallet) }
     }
 
     @Throws(
